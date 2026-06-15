@@ -4,8 +4,13 @@ import { loadMathJax } from './load-mathjax'
 
 describe('loadMathJax', () => {
   beforeEach(() => {
-    window.__latexVisualEditorMathJaxPath = '/dist/mathjax/tex-svg.js'
-    window.__latexVisualEditorNonce = 'test-nonce'
+    const path = document.createElement('meta')
+    path.name = 'latex-visual-editor-mathjax'
+    path.content = '/dist/mathjax/tex-svg.js'
+    document.head.append(path)
+    const bootstrap = document.createElement('script')
+    bootstrap.nonce = 'test-nonce'
+    document.head.append(bootstrap)
   })
 
   it('configures the Overleaf MathJax runtime before loading it', () => {
@@ -19,9 +24,12 @@ describe('loadMathJax', () => {
       output: { displayOverflow: 'linebreak' },
       startup: { typeset: false },
     })
-    expect(document.querySelector('script')?.src).toContain(
+    const mathJaxScript = document.querySelector<HTMLScriptElement>(
+      'script[src*="tex-svg.js"]'
+    )
+    expect(mathJaxScript?.src).toContain(
       '/dist/mathjax/tex-svg.js'
     )
-    expect(document.querySelector('script')?.nonce).toBe('test-nonce')
+    expect(mathJaxScript?.nonce).toBe('test-nonce')
   })
 })

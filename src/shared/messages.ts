@@ -31,7 +31,10 @@ export type HostToWebviewMessage =
     }
   | { type: 'documentChanged'; text: string; version: number }
   | { type: 'metadataChanged'; metadata: WorkspaceMetadata }
-  | { type: 'command'; command: 'insertFigure' | 'insertTable' }
+  | {
+      type: 'command'
+      command: 'insertFigure' | 'insertTable' | 'selectAll'
+    }
   | {
       type: 'resourceResolved'
       requestId: string

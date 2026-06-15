@@ -1,10 +1,7 @@
-.git/**
-.github/**
-src/**
-scripts/**
-test/**
-build/**
-examples/build/**
-node_modules/**
-tsconfig.json
-*.vsix
+**
+!dist/**
+**/*.map
+!README.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!package.json

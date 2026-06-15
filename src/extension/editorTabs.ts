@@ -42,7 +42,11 @@ export async function replaceDocumentEditor(
     viewColumn
   )
 
-  if (previousTab) {
-    await vscode.window.tabGroups.close(previousTab, true)
+  if (previousTab && previousTab.group.tabs.includes(previousTab)) {
+    try {
+      await vscode.window.tabGroups.close(previousTab, true)
+    } catch {
+      // openWith may asynchronously replace the original tab before close runs.
+    }
   }
 }

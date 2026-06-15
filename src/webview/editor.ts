@@ -133,7 +133,15 @@ window.addEventListener('message', event => {
     }
     case 'command':
       if (message.command === 'insertFigure') openImagePicker()
-      else insertTable(3, 3)
+      else if (message.command === 'insertTable') insertTable(3, 3)
+      else if (view) {
+        view.dispatch({
+          selection: EditorSelection.single(0, view.state.doc.length),
+          scrollIntoView: true,
+          userEvent: 'select',
+        })
+        view.focus()
+      }
       break
   }
 })

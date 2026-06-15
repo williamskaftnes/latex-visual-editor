@@ -6,6 +6,11 @@ await mkdir('dist', { recursive: true })
 await mkdir('dist/mathjax', { recursive: true })
 await rm('dist/katex.min.css', { force: true })
 await rm('dist/fonts', { recursive: true, force: true })
+if (!watch) {
+  await rm('dist/extension.js.map', { force: true })
+  await rm('dist/webview.js.map', { force: true })
+  await rm('dist/webview.css.map', { force: true })
+}
 
 const builds = [
   {
@@ -28,7 +33,7 @@ for (const options of builds) {
   const config = {
     ...options,
     bundle: true,
-    sourcemap: true,
+    sourcemap: watch,
     target: 'es2022',
     logLevel: 'info',
   }

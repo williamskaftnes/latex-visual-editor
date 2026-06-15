@@ -6,4 +6,3 @@ AGENTS.md
 coverage/
 src/webview/overleaf-editor/lezer-latex/latex.mjs
 src/webview/overleaf-editor/lezer-latex/latex.terms.mjs
-

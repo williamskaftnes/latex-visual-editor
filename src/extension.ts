@@ -1,5 +1,8 @@
 import * as vscode from 'vscode'
-import { getActiveVisualEditor } from './extension/activeVisualEditor'
+import {
+  getActiveVisualEditor,
+  getActiveVisualEditorDocument,
+} from './extension/activeVisualEditor'
 import { replaceDocumentEditor } from './extension/editorTabs'
 import {
   captureTextEditorSelection,
@@ -85,6 +88,32 @@ export function activate(context: vscode.ExtensionContext): void {
         type: 'command',
         command: 'insertTable',
       })
+    }),
+    vscode.commands.registerCommand('latexVisualEditor.selectAll', () => {
+      const panel = getActiveVisualEditor()
+      const document = getActiveVisualEditorDocument()
+      if (!panel || !document) return
+
+      storeEditorSelection(document.uri, {
+        anchor: 0,
+        head: document.getText().length,
+      })
+      void panel.webview.postMessage({
+        type: 'command',
+        command: 'selectAll',
+      })
+    }),
+    vscode.commands.registerCommand('latexVisualEditor.copy', async () => {
+      const document = getActiveVisualEditorDocument()
+      if (!document) return
+
+      const selection = getStoredEditorSelection(document.uri)
+      if (!selection) return
+      const from = Math.min(selection.anchor, selection.head)
+      const to = Math.max(selection.anchor, selection.head)
+      await vscode.env.clipboard.writeText(
+        document.getText().slice(from, to)
+      )
     })
   )
 

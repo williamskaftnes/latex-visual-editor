@@ -1,12 +1,21 @@
 {
   "name": "latex-visual-editor",
   "displayName": "LaTeX Visual Editor",
-  "description": "An Overleaf-derived visual LaTeX editor for VS Code.",
+  "description": "A Visual LaTeX editor, inspired by Overleaf's visual editor.",
   "version": "0.1.0",
-  "publisher": "local",
+  "publisher": "williamskaftnes",
   "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/williamskaftnes/latex-visual-editor.git"
+  },
   "engines": {
     "vscode": "^1.95.0"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
   },
   "categories": [
     "Other",
@@ -48,6 +57,20 @@
       {
         "command": "latexVisualEditor.insertTable",
         "title": "LaTeX: Insert Table"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "latexVisualEditor.selectAll",
+        "key": "ctrl+a",
+        "mac": "cmd+a",
+        "when": "latexVisualEditor.active"
+      },
+      {
+        "command": "latexVisualEditor.copy",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "latexVisualEditor.active"
       }
     ],
     "menus": {
@@ -94,7 +117,9 @@
     "typecheck": "tsc --noEmit",
     "pretest": "npm run generate:parser",
     "test": "vitest run",
-    "package": "npm run build && vsce package --no-dependencies"
+    "check": "npm run typecheck && npm test",
+    "vscode:prepublish": "npm run check && npm run build",
+    "package": "vsce package --no-dependencies"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.7",
@@ -116,9 +141,9 @@
     "@types/node": "^22.15.3",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.3.2",
-    "esbuild": "^0.25.3",
-    "jsdom": "^26.1.0",
-    "typescript": "^5.8.3",
-    "vitest": "^3.1.2"
+    "esbuild": "^0.28.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }

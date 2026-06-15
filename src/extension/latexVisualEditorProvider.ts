@@ -37,7 +37,7 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
       VISUAL_EDITOR_VIEW_TYPE,
       provider,
       {
-        webviewOptions: { retainContextWhenHidden: true },
+        webviewOptions: { retainContextWhenHidden: false },
         supportsMultipleEditorsPerDocument: true,
       }
     )
@@ -136,13 +136,13 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 
     const visibilityListener = panel.onDidChangeViewState(event => {
       if (event.webviewPanel.active) {
-        setActiveVisualEditor(panel)
+        setActiveVisualEditor(panel, document)
       } else if (getActiveVisualEditor() === panel) {
         setActiveVisualEditor(undefined)
       }
     })
 
-    if (panel.active) setActiveVisualEditor(panel)
+    if (panel.active) setActiveVisualEditor(panel, document)
     panel.onDidDispose(() => {
       documentListener.dispose()
       metadataListener.dispose()
@@ -325,9 +325,17 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 <body>
   <div id="toolbar"></div>
   <div id="editor"></div>
-  <script nonce="${nonce}">window.__latexVisualEditorMathJaxPath = ${JSON.stringify(mathJaxUri.toString())}; window.__latexVisualEditorNonce = ${JSON.stringify(nonce)};</script>
+  <meta name="latex-visual-editor-mathjax" content="${escapeHtmlAttribute(mathJaxUri.toString())}">
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`
   }
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
 }

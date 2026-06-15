@@ -11,6 +11,8 @@ const EMPTY_METADATA: WorkspaceMetadata = {
   commands: [],
   environments: [],
 }
+const MAX_INDEXED_FILES = 2_000
+const MAX_INDEXED_FILE_BYTES = 2 * 1024 * 1024
 
 /**
  * Indexes LaTeX and BibTeX symbols used by the visual editor.
@@ -65,17 +67,13 @@ export class WorkspaceMetadataIndex implements vscode.Disposable {
       ),
     ])
 
-    const texContents = await Promise.all(
-      texFiles.map(async uri => {
-        return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri))
-      })
+    const selectedTexFiles = texFiles.slice(0, MAX_INDEXED_FILES)
+    const selectedBibFiles = bibFiles.slice(
+      0,
+      Math.max(0, MAX_INDEXED_FILES - selectedTexFiles.length)
     )
-
-    const bibContents = await Promise.all(
-      bibFiles.map(async uri => {
-        return new TextDecoder().decode(await vscode.workspace.fs.readFile(uri))
-      })
-    )
+    const texContents = await readWorkspaceFiles(selectedTexFiles)
+    const bibContents = await readWorkspaceFiles(selectedBibFiles)
 
     this.metadata = extractWorkspaceMetadata(texContents, bibContents)
     this.emitter.fire(this.metadata)
@@ -101,4 +99,20 @@ export class WorkspaceMetadataIndex implements vscode.Disposable {
       void this.refresh()
     }, 200)
   }
+}
+
+async function readWorkspaceFiles(uris: vscode.Uri[]): Promise<string[]> {
+  const contents: string[] = []
+  for (const uri of uris) {
+    try {
+      const stat = await vscode.workspace.fs.stat(uri)
+      if (stat.size > MAX_INDEXED_FILE_BYTES) continue
+      contents.push(
+        new TextDecoder().decode(await vscode.workspace.fs.readFile(uri))
+      )
+    } catch {
+      // Files can disappear while a workspace refresh is in progress.
+    }
+  }
+  return contents
 }

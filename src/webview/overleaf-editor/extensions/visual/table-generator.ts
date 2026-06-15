@@ -41,30 +41,42 @@ export const tableGeneratorTheme = EditorView.baseTheme({
 
   '&light .table-generator': {
     '--table-generator-active-border-color': '#666',
-    '--table-generator-coming-soon-background-color': 'var(--neutral-10)',
-    '--table-generator-coming-soon-color': 'var(--neutral-70)',
-    '--table-generator-divider-color': 'var(--neutral-20)',
-    '--table-generator-dropdown-divider-color': 'var(--neutral-20)',
-    '--table-generator-focus-border-color': '#97b6e5',
+    '--table-generator-coming-soon-background-color':
+      'var(--vscode-editorWidget-background, #f3f3f3)',
+    '--table-generator-coming-soon-color':
+      'var(--vscode-editorWidget-foreground, #333)',
+    '--table-generator-divider-color':
+      'var(--vscode-panel-border, #e5e5e5)',
+    '--table-generator-dropdown-divider-color':
+      'var(--vscode-panel-border, #e5e5e5)',
+    '--table-generator-focus-border-color':
+      'var(--vscode-focusBorder, #007fd4)',
     '--table-generator-inactive-border-color': '#dedede',
-    '--table-generator-selected-background-color': 'var(--blue-10)',
-    '--table-generator-selector-background-color': 'var(--neutral-30)',
+    '--table-generator-selected-background-color':
+      'var(--vscode-editor-selectionBackground, rgba(0, 122, 204, 0.2))',
+    '--table-generator-selector-background-color':
+      'var(--vscode-disabledForeground, #999)',
     '--table-generator-selector-hover-color': '#3265b2',
     '--table-generator-toolbar-background': '#fff',
     '--table-generator-toolbar-button-active-background':
       'rgba(47, 58, 76, 0.16)',
-    '--table-generator-toolbar-button-color': 'var(--neutral-70)',
+    '--table-generator-toolbar-button-color':
+      'var(--vscode-editorWidget-foreground, #333)',
     '--table-generator-toolbar-button-hover-background':
       'rgba(47, 58, 76, 0.08)',
-    '--table-generator-toolbar-dropdown-border-color': 'var(--neutral-60)',
+    '--table-generator-toolbar-dropdown-border-color':
+      'var(--vscode-dropdown-border, #cecece)',
     '--table-generator-toolbar-dropdown-disabled-background': '#f2f2f2',
-    '--table-generator-toolbar-dropdown-disabled-color': 'var(--neutral-40)',
-    '--table-generator-toolbar-dropdown-active-background': 'var(--green-10)',
-    '--table-generator-toolbar-dropdown-active-color': 'var(--green-70)',
+    '--table-generator-toolbar-dropdown-disabled-color':
+      'var(--vscode-disabledForeground, #999)',
+    '--table-generator-toolbar-dropdown-active-background':
+      'var(--vscode-list-activeSelectionBackground, #0078d4)',
+    '--table-generator-toolbar-dropdown-active-color':
+      'var(--vscode-list-activeSelectionForeground, #fff)',
     '--table-generator-toolbar-dropdown-active-hover-background':
-      'var(--green-10)',
+      'var(--vscode-list-activeSelectionBackground, #0078d4)',
     '--table-generator-toolbar-dropdown-active-active-background':
-      'var(--green-20)',
+      'var(--vscode-list-activeSelectionBackground, #0078d4)',
     '--table-generator-toolbar-shadow-color': '#1e253029',
     '--table-generator-error-background': '#F1F4F9',
     '--table-generator-error-color': 'black',

@@ -32,8 +32,6 @@ type MathJaxApi = {
 declare global {
   interface Window {
     MathJax: MathJaxApi | Record<string, unknown>
-    __latexVisualEditorMathJaxPath?: string
-    __latexVisualEditorNonce?: string
   }
 }
 
@@ -122,7 +120,11 @@ export const loadMathJax = async (options?: {
         }
       }
 
-      const path = window.__latexVisualEditorMathJaxPath
+      const path = document
+        .querySelector<HTMLMetaElement>(
+          'meta[name="latex-visual-editor-mathjax"]'
+        )
+        ?.getAttribute('content')
       if (!path) {
         reject(new Error('No MathJax path configured'))
         return
@@ -130,9 +132,10 @@ export const loadMathJax = async (options?: {
 
       const script = document.createElement('script')
       script.src = path
-      if (window.__latexVisualEditorNonce) {
-        script.nonce = window.__latexVisualEditorNonce
-      }
+      const nonce = document.querySelector<HTMLScriptElement>(
+        'script[nonce]'
+      )?.nonce
+      if (nonce) script.nonce = nonce
       script.addEventListener('load', async () => {
         const api = window.MathJax as MathJaxApi
         await api.startup.promise

@@ -243,16 +243,15 @@ describe('TabularWidget', () => {
 
     expect(validateParsedTable(nextParsed)).toBe(true)
     expect(nextParsed.table.rows).toHaveLength(4)
-    expect(nextParsed.table.columns).toHaveLength(2)
+    expect(nextParsed.table.columns).toHaveLength(1)
     expect(
       nextState.sliceDoc(
         nextParsed.specification.from,
         nextParsed.specification.to
       )
-    ).toBe('lr')
+    ).toBe('l')
     expect(nextParsed.table.rows[1].cells.map(cell => cell.content.trim())).toEqual([
       'Headings',
-      '3',
     ])
   })
 })

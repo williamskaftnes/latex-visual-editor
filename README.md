@@ -4,21 +4,22 @@ A VS Code extension that provides a visual editor for LaTeX documents. It is ins
 
 ## Usage
 
-Open a `.tex` file in VS Code and click the eye icon (Toggle Visual Editor) in the top right corner of the editor to switch to the visual editor.
+Open a `.tex` file and click the eye icon in the editor title bar to toggle the
+visual editor.
 
 ## Development
 
 ```powershell
 npm install
+npm run check
 npm run build
 ```
 
-Rebuild, package, install, and verify the installed bundle:
+Package and install the verified bundle:
 
 ```powershell
 npm run package
-code --install-extension .\latex-visual-editor-0.1.0.vsix --force
-rg "expected-code-marker" "$env:USERPROFILE\.vscode\extensions\local.latex-visual-editor-0.1.0\dist"
+code --install-extension latex-visual-editor-0.1.0.vsix --force
 ```
 
 Reload the VS Code window after installation.
