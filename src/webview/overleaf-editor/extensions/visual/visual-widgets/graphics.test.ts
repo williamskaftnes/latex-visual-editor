@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { describe, expect, it } from 'vitest'
 import { GraphicsWidget } from './graphics'
 import { EditableGraphicsWidget } from './editable-graphics'
+import { FigureData } from '../../figure-modal'
 import type { PreviewPath } from '../../../../adapters/previewPath'
 
 describe('GraphicsWidget', () => {
@@ -56,6 +57,36 @@ describe('GraphicsWidget', () => {
     )
 
     expect(unresolved.eq(resolved)).toBe(false)
+  })
+
+  it('renders linewidth figures at full editor width', () => {
+    const widget = new GraphicsWidget(
+      'hero.png',
+      () => ({ url: 'vscode-resource://hero.png', extension: 'png' }),
+      true,
+      new FigureData({
+        from: 0,
+        to: 44,
+        caption: null,
+        label: null,
+        width: 1,
+        graphicsCommandArguments: { from: 17, to: 32 },
+        graphicsCommand: { from: 0, to: 44 },
+        file: { from: 34, to: 42, path: 'hero.png' },
+      })
+    )
+    const view = new EditorView({
+      state: EditorState.create({ doc: '' }),
+      parent: document.body,
+    })
+
+    const element = widget.toDOM(view)
+    const image = element.querySelector<HTMLImageElement>('img.ol-cm-graphics')
+
+    expect(image?.getAttribute('style')).toContain('width: min(100%, 100%)')
+    expect(image?.getAttribute('style')).toContain(
+      'max-width: min(100%, 100%)'
+    )
   })
 
   it('rerenders editable figures when an unresolved preview path becomes available', () => {

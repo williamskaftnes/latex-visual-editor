@@ -160,6 +160,50 @@ body {
   border-radius: 3px;
 }
 
+.latex-listing-preview {
+  margin: 10px 0;
+  color: var(--vscode-editor-foreground);
+  background: var(--vscode-textCodeBlock-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.latex-listing-preview-source {
+  max-height: 420px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  background: transparent;
+  font-family: var(--source-font-family);
+  font-size: var(--font-size);
+  line-height: 1.45;
+  white-space: pre;
+  user-select: text;
+}
+
+.latex-listing-preview-source code {
+  background: transparent !important;
+}
+
+.latex-listing-preview-overflow,
+.latex-listing-preview-message {
+  color: var(--vscode-descriptionForeground);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.latex-listing-preview-overflow {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+.latex-listing-preview-message {
+  padding: 14px;
+}
+
 .notification {
   padding: 12px;
   border: 1px solid var(--vscode-panel-border);

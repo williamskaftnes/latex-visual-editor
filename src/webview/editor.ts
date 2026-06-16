@@ -797,6 +797,8 @@ const phrases: Record<string, string> = {
   edit_figure: 'Edit figure',
   the_visual_editor_cant_preview_this_type_of_image_file:
     'The visual editor cannot preview this image.',
+  the_visual_editor_cant_preview_this_listing_file:
+    'The visual editor cannot preview this listing.',
   click_recompile_and_check_your_pdf_to_see_how_its_looking:
     'Open the compiled PDF to inspect this image.',
   sorry_your_table_cant_be_displayed_at_the_moment:

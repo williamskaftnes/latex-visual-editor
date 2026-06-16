@@ -154,6 +154,7 @@ export const markDecorations = ViewPlugin.define(
                 switch (environmentName) {
                   case 'abstract':
                   case 'figure':
+                  case 'subfigure':
                   case 'table':
                   case 'verbatim':
                   case 'lstlisting':

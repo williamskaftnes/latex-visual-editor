@@ -19,6 +19,7 @@ import {
 import { WorkspaceMetadataIndex } from './workspaceMetadata'
 
 export const VISUAL_EDITOR_VIEW_TYPE = 'latexVisualEditor.editor'
+const MAX_LISTING_PREVIEW_BYTES = 256 * 1024
 
 /**
  * Hosts the Overleaf-derived editor and synchronizes it with a TextDocument.
@@ -250,7 +251,9 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
     }
 
     const stat = await vscode.workspace.fs.stat(uri)
-    if (stat.size > this.configuration.maxImagePreviewBytes) {
+    if (
+      stat.size > this.configuration.maxImagePreviewBytes
+    ) {
       await webview.postMessage({
         type: 'resourceResolved',
         requestId: message.requestId,
@@ -260,12 +263,21 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
       return
     }
 
+    let text: string | undefined
+    if (stat.size <= MAX_LISTING_PREVIEW_BYTES) {
+      const bytes = await vscode.workspace.fs.readFile(uri)
+      if (looksLikeText(bytes)) {
+        text = new TextDecoder().decode(bytes)
+      }
+    }
+
     await webview.postMessage({
       type: 'resourceResolved',
       requestId: message.requestId,
       path: message.path,
       url: webview.asWebviewUri(uri).toString(),
       extension: path.extname(uri.fsPath).slice(1),
+      text,
     } satisfies HostToWebviewMessage)
   }
 
@@ -352,6 +364,25 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 </body>
 </html>`
   }
+}
+
+function looksLikeText(bytes: Uint8Array): boolean {
+  if (bytes.length === 0) return true
+  const sampleLength = Math.min(bytes.length, 4096)
+  let suspicious = 0
+
+  for (let index = 0; index < sampleLength; index += 1) {
+    const byte = bytes[index]
+    if (byte === 0) return false
+    if (
+      byte < 7 ||
+      (byte > 13 && byte < 32)
+    ) {
+      suspicious += 1
+    }
+  }
+
+  return suspicious / sampleLength < 0.02
 }
 
 function escapeHtmlAttribute(value: string): string {

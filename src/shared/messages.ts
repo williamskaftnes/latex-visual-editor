@@ -41,6 +41,7 @@ export type HostToWebviewMessage =
       path: string
       url?: string
       extension?: string
+      text?: string
       error?: string
     }
   | {

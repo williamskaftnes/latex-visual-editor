@@ -69,6 +69,7 @@ import { skipPreambleWithCursor } from './skip-preamble-cursor'
 import { TableRenderingErrorWidget } from './visual-widgets/table-rendering-error'
 import { GraphicsWidget } from './visual-widgets/graphics'
 import { InlineGraphicsWidget } from './visual-widgets/inline-graphics'
+import { LstInputListingWidget } from './visual-widgets/lstinputlisting'
 import type { PreviewPath } from '../../../adapters/previewPath'
 import { selectDecoratedArgument } from './select-decorated-argument'
 import {
@@ -93,6 +94,8 @@ type Options = {
 }
 
 export const refreshAtomicDecorations = StateEffect.define<void>()
+
+const hiddenFigureCommands = new Set(['\\hfill'])
 
 function shouldDecorate(
   state: EditorState,
@@ -298,6 +301,7 @@ export const atomicDecorations = (options: Options) => {
           const envName = getUnstarredEnvironmentName(nodeRef.node, state)
           const hideInEnvironmentTypes = [
             'figure',
+            'subfigure',
             'table',
             'verbatim',
             'lstlisting',
@@ -1232,7 +1236,51 @@ export const atomicDecorations = (options: Options) => {
             if (commandName.length > 0) {
               const textArgumentNode = commandNode.getChild('TextArgument')
 
-              if (commandName === '\\keywords') {
+              if (
+                hiddenFigureCommands.has(commandName) &&
+                ancestorNodeOfType(state, nodeRef.from, 'FigureEnvironment')
+              ) {
+                if (shouldDecorate(state, nodeRef)) {
+                  const line = state.doc.lineAt(nodeRef.from)
+                  const range = lineContainsOnlyNode(line, nodeRef)
+                    ? {
+                        from: line.from,
+                        to: extendForwardsOverEmptyLines(state.doc, line),
+                      }
+                    : nodeRef
+
+                  decorations.push(
+                    Decoration.replace({}).range(range.from, range.to)
+                  )
+                  return false
+                }
+              } else if (commandName === '\\lstinputlisting') {
+                const filePathNode = textArgumentNode?.getChild('LongArg')
+                const filePath = filePathNode
+                  ? state.doc
+                      .sliceString(filePathNode.from, filePathNode.to)
+                      .trim()
+                  : ''
+
+                if (filePath && shouldDecorateFromLineEdges(state, nodeRef)) {
+                  const line = state.doc.lineAt(nodeRef.from)
+                  const onlySpaceBeforeNode = /^\s*$/.test(
+                    state.sliceDoc(line.from, nodeRef.from)
+                  )
+                  const from = onlySpaceBeforeNode ? line.from : nodeRef.from
+
+                  decorations.push(
+                    Decoration.replace({
+                      widget: new LstInputListingWidget(
+                        filePath,
+                        previewByPath
+                      ),
+                      block: true,
+                    }).range(from, nodeRef.to)
+                  )
+                  return false
+                }
+              } else if (commandName === '\\keywords') {
                 if (shouldDecorate(state, nodeRef)) {
                   // command name and opening brace
                   decorations.push(

@@ -157,12 +157,12 @@ const mainVisualTheme = EditorView.theme({
     borderBottomLeftRadius: '8px',
     borderBottomRightRadius: '8px',
   },
-  '.ol-cm-environment-figure.ol-cm-environment-line, .ol-cm-environment-table.ol-cm-environment-line':
+  '.ol-cm-environment-figure.ol-cm-environment-line, .ol-cm-environment-subfigure.ol-cm-environment-line, .ol-cm-environment-table.ol-cm-environment-line':
     {
       backgroundColor: 'rgba(125, 125, 125, 0.05)',
       padding: '0 12px',
     },
-  '.ol-cm-environment-figure.ol-cm-environment-last-line, .ol-cm-environment-table.ol-cm-environment-last-line, .ol-cm-preamble-line.ol-cm-environment-last-line':
+  '.ol-cm-environment-figure.ol-cm-environment-last-line, .ol-cm-environment-subfigure.ol-cm-environment-last-line, .ol-cm-environment-table.ol-cm-environment-last-line, .ol-cm-preamble-line.ol-cm-environment-last-line':
     {
       boxShadow: '0 2px 5px -3px rgb(125, 125, 125, 0.5)',
     },
@@ -338,7 +338,7 @@ const mainVisualTheme = EditorView.theme({
   },
   '.ol-cm-graphics': {
     display: 'block',
-    maxWidth: 'min(300px, 100%)',
+    maxWidth: '100%',
     paddingTop: '1em',
     paddingBottom: '1em',
     cursor: 'pointer',
@@ -443,7 +443,7 @@ const mainVisualTheme = EditorView.theme({
   '.ol-cm-end-document-widget': {
     textAlign: 'center',
   },
-  '.ol-cm-environment-figure': {
+  '.ol-cm-environment-figure, .ol-cm-environment-subfigure': {
     position: 'relative',
   },
   '.ol-cm-graphics-edit-button': {

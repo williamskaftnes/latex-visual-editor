@@ -275,10 +275,10 @@ export function parseFigureData(
         optionalArgs.to
       )
       const widthMatch = optionalArgContent.match(
-        /^width=([0-9]|(?:[0-9]*\.[0-9]+)|(?:[0-9]+\.))\\(linewidth|pagewidth|textwidth|hsize|columnwidth)$/
+        /^\s*width\s*=\s*((?:\d+(?:\.\d*)?|\.\d+)?)\s*\\(linewidth|pagewidth|textwidth|hsize|columnwidth)\s*$/
       )
       if (widthMatch) {
-        width = parseFloat(widthMatch[1])
+        width = widthMatch[1] ? parseFloat(widthMatch[1]) : 1
         if (widthMatch[2] !== 'linewidth') {
           // We shouldn't edit any width other that linewidth
           unknownGraphicsArguments = optionalArgContent

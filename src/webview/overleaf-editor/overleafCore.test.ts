@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { parser } from './lezer-latex/latex.mjs'
 import { wrapRanges } from './commands/ranges'
 import { parseColumnSpecifications } from './components/table-generator/utils'
+import { parseFigureData } from './utils/tree-operations/environments'
 
 describe('vendored Overleaf core', () => {
   it('parses rich and unknown LaTeX without changing source bytes', () => {
@@ -25,6 +26,57 @@ describe('vendored Overleaf core', () => {
   it('keeps malformed incomplete commands parseable', () => {
     const source = String.raw`\section{unfinished`
     expect(parser.parse(source).length).toBe(source.length)
+  })
+
+  it('parses bare linewidth graphics width as full line width', () => {
+    const source = String.raw`\begin{figure}
+\includegraphics[width=\linewidth]{images/a.png}
+\end{figure}`
+    const state = EditorState.create({ doc: source })
+    const tree = parser.parse(source)
+    let figureNode = tree.topNode.getChild('FigureEnvironment')
+    tree.iterate({
+      enter(node) {
+        if (node.type.is('FigureEnvironment')) {
+          figureNode = node.node
+          return false
+        }
+      },
+    })
+
+    expect(figureNode).not.toBeNull()
+    expect(parseFigureData(figureNode!, state)?.width).toBe(1)
+  })
+
+  it('parses subfigure environments as editable figure data', () => {
+    const source = String.raw`\begin{subfigure}{0.45\linewidth}
+\includegraphics[width=\linewidth]{images/a.png}
+\caption{Panel A}
+\label{fig:panel-a}
+\end{subfigure}`
+    const state = EditorState.create({ doc: source })
+    const tree = parser.parse(source)
+    let figureNode = tree.topNode.getChild('FigureEnvironment')
+    tree.iterate({
+      enter(node) {
+        if (node.type.is('FigureEnvironment')) {
+          figureNode = node.node
+          return false
+        }
+      },
+    })
+
+    const figureData = parseFigureData(figureNode!, state)
+    expect(figureData?.file.path).toBe('images/a.png')
+    expect(figureData?.width).toBe(1)
+    expect(figureData?.caption).toEqual({
+      from: source.indexOf(String.raw`\caption`),
+      to: source.indexOf(String.raw`\label`) - 1,
+    })
+    expect(figureData?.label).toEqual({
+      from: source.indexOf(String.raw`\label`),
+      to: source.indexOf(String.raw`\end{subfigure}`) - 1,
+    })
   })
 
   it('wraps only the selected source range', () => {
