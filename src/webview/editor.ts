@@ -6,10 +6,6 @@ import {
   history,
   historyKeymap,
   indentWithTab,
-  redo,
-  redoDepth,
-  undo,
-  undoDepth,
 } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { Compartment, EditorSelection, EditorState } from '@codemirror/state'
@@ -27,12 +23,15 @@ import {
   editFigureData,
   figureModal,
 } from './overleaf-editor/extensions/figure-modal'
-import { toggleRanges, wrapRanges } from './overleaf-editor/commands/ranges'
+import { toggleRanges } from './overleaf-editor/commands/ranges'
 import {
   toggleListForRanges,
 } from './overleaf-editor/extensions/toolbar/lists'
 import { setSectionHeadingLevel } from './overleaf-editor/extensions/toolbar/sections'
-import { atomicDecorations } from './overleaf-editor/extensions/visual/atomic-decorations'
+import {
+  atomicDecorations,
+  refreshAtomicDecorations,
+} from './overleaf-editor/extensions/visual/atomic-decorations'
 import { highlightCurrentLineNumber } from './overleaf-editor/extensions/visual/current-line-number'
 import { listItemMarker } from './overleaf-editor/extensions/visual/list-item-marker'
 import { markDecorations } from './overleaf-editor/extensions/visual/mark-decorations'
@@ -429,7 +428,7 @@ function previewByPath(path: string): PreviewPath | null {
 function refreshVisualDecorations(): void {
   if (!view) return
   view.dispatch({
-    selection: EditorSelection.create(view.state.selection.ranges),
+    effects: refreshAtomicDecorations.of(),
   })
 }
 
@@ -501,15 +500,8 @@ function createToolbar(): void {
     'numbered-list',
     true
   )
-  addButton(toolbar, 'Inline math', '∑', () => run(wrapRanges('\\(', '\\)')))
-  addButton(toolbar, 'Display math', '∫', () => run(wrapRanges('\n\\[', '\\]\n')))
-  addButton(toolbar, 'Link', 'Link', () => run(wrapRanges('\\href{}{', '}')))
-  addButton(toolbar, 'Citation', 'Cite', () => insertReference('\\cite', metadata.citationKeys))
-  addButton(toolbar, 'Cross-reference', 'Ref', () => insertReference('\\ref', metadata.labels))
   addButton(toolbar, 'Figure', 'Image', openImagePicker)
   addButton(toolbar, 'Table', 'Table', () => insertTable(3, 3))
-  addButton(toolbar, 'Undo', '↶', () => view && undo(view), 'undo')
-  addButton(toolbar, 'Redo', '↷', () => view && redo(view), 'redo')
 }
 
 /**
@@ -542,26 +534,6 @@ function run(command: (editor: EditorView) => boolean): void {
   if (!view) return
   command(view)
   view.focus()
-}
-
-/**
- * Inserts a citation or reference using indexed workspace keys.
- */
-function insertReference(command: string, values: string[]): void {
-  if (!view) return
-  const suggestion = values.length
-    ? window.prompt(`Choose a value:\n${values.slice(0, 30).join('\n')}`, values[0])
-    : window.prompt('Enter value')
-  if (!suggestion) return
-  const range = view.state.selection.main
-  view.dispatch({
-    changes: {
-      from: range.from,
-      to: range.to,
-      insert: `${command}{${suggestion}}`,
-    },
-    selection: { anchor: range.from + command.length + suggestion.length + 2 },
-  })
 }
 
 /**
@@ -797,11 +769,6 @@ function updateToolbarState(): void {
   if (heading) {
     heading.value = findCurrentSectionHeadingLevel(state)?.level ?? 'text'
   }
-
-  const undoButton = toolbarButton('undo')
-  if (undoButton) undoButton.disabled = undoDepth(state) === 0
-  const redoButton = toolbarButton('redo')
-  if (redoButton) redoButton.disabled = redoDepth(state) === 0
 }
 
 function setToolbarToggle(control: string, active: boolean): void {

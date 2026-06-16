@@ -21,20 +21,27 @@ export class ImageFileService {
     private readonly workspaceFolder: vscode.WorkspaceFolder | undefined
   ) {}
 
+  get resourceRoot(): vscode.Uri {
+    return (
+      this.workspaceFolder?.uri ??
+      vscode.Uri.file(path.dirname(this.document.uri.fsPath))
+    )
+  }
+
   /**
-   * Resolves a LaTeX graphics path to an existing workspace file.
+   * Resolves a LaTeX graphics path to an existing local file.
    */
   async resolve(graphicsPath: string): Promise<vscode.Uri | undefined> {
     const cleanPath = graphicsPath.replace(/^['"]|['"]$/g, '')
     const candidates = this.candidatePaths(cleanPath)
+    const root = this.resourceRoot
 
     for (const candidate of candidates) {
       try {
         const stat = await vscode.workspace.fs.stat(candidate)
         if (
           stat.type === vscode.FileType.File &&
-          this.workspaceFolder &&
-          isUriInsideRoot(candidate, this.workspaceFolder.uri)
+          isUriInsideRoot(candidate, root)
         ) {
           return candidate
         }
@@ -83,14 +90,21 @@ export class ImageFileService {
    */
   private candidatePaths(graphicsPath: string): vscode.Uri[] {
     const documentDirectory = vscode.Uri.file(path.dirname(this.document.uri.fsPath))
-    const base = vscode.Uri.joinPath(documentDirectory, graphicsPath)
-    const candidates = [base]
+    const bases = [
+      vscode.Uri.joinPath(documentDirectory, graphicsPath),
+      ...(this.workspaceFolder
+        ? [vscode.Uri.joinPath(this.workspaceFolder.uri, graphicsPath)]
+        : []),
+    ]
+    const candidates = uniqueUris(bases)
     if (!path.extname(graphicsPath)) {
-      for (const extension of SAFE_IMAGE_EXTENSIONS) {
-        candidates.push(vscode.Uri.file(base.fsPath + extension))
+      for (const base of bases) {
+        for (const extension of SAFE_IMAGE_EXTENSIONS) {
+          candidates.push(vscode.Uri.file(base.fsPath + extension))
+        }
       }
     }
-    return candidates
+    return uniqueUris(candidates)
   }
 
 }
@@ -126,4 +140,14 @@ async function uriExists(uri: vscode.Uri): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+function uniqueUris(uris: vscode.Uri[]): vscode.Uri[] {
+  const seen = new Set<string>()
+  return uris.filter(uri => {
+    const key = path.resolve(uri.fsPath).toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }

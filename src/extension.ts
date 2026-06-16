@@ -22,12 +22,23 @@ import {
 } from './extension/latexVisualEditorProvider'
 
 const MODE_KEY_PREFIX = 'latexVisualEditor.mode.'
+const CURRENT_MODE_KEY = 'latexVisualEditor.currentMode'
 
 /**
  * Activates commands and the custom text editor.
  */
 export function activate(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(LatexVisualEditorProvider.register(context))
+  const visualEditorProvider = new LatexVisualEditorProvider(context)
+  context.subscriptions.push(
+    LatexVisualEditorProvider.register(context, visualEditorProvider)
+  )
+
+  const refreshWebviews = () => {
+    const count = visualEditorProvider.refreshWebviews()
+    void vscode.window.showInformationMessage(
+      `Refreshed ${count} LaTeX visual editor webview${count === 1 ? '' : 's'}.`
+    )
+  }
 
   const openVisual = async (uri?: vscode.Uri) => {
     const target = uri ?? vscode.window.activeTextEditor?.document.uri
@@ -89,6 +100,17 @@ export function activate(context: vscode.ExtensionContext): void {
         command: 'insertTable',
       })
     }),
+    vscode.commands.registerCommand(
+      'latexVisualEditor.refreshWebviews',
+      refreshWebviews
+    ),
+    vscode.window.registerUriHandler({
+      handleUri(uri) {
+        if (uri.path === '/refreshWebviews') {
+          refreshWebviews()
+        }
+      },
+    }),
     vscode.commands.registerCommand('latexVisualEditor.selectAll', () => {
       const panel = getActiveVisualEditor()
       const document = getActiveVisualEditorDocument()
@@ -121,15 +143,11 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(editor => {
       if (!editor || editor.document.languageId !== 'latex') return
-      const configuration = vscode.workspace.getConfiguration('latexVisualEditor')
-      if (!configuration.get<boolean>('rememberMode', true)) return
+      const rememberedMode = getRememberedMode(context, editor.document.uri)
+      if (rememberedMode !== 'visual') return
 
       const key = editor.document.uri.toString()
-      if (
-        context.workspaceState.get<'source' | 'visual'>(MODE_KEY_PREFIX + key) !==
-          'visual' ||
-        reopening.has(key)
-      ) {
+      if (reopening.has(key)) {
         return
       }
 
@@ -150,8 +168,35 @@ async function rememberMode(
   mode: 'source' | 'visual'
 ): Promise<void> {
   const configuration = vscode.workspace.getConfiguration('latexVisualEditor')
-  if (!configuration.get<boolean>('rememberMode', true)) return
-  await context.workspaceState.update(MODE_KEY_PREFIX + uri.toString(), mode)
+  await Promise.all([
+    configuration.get<boolean>('rememberMode', true)
+      ? context.workspaceState.update(MODE_KEY_PREFIX + uri.toString(), mode)
+      : Promise.resolve(),
+    configuration.get<boolean>('persistToggleAcrossTexFiles', true)
+      ? context.workspaceState.update(CURRENT_MODE_KEY, mode)
+      : Promise.resolve(),
+  ])
+}
+
+/**
+ * Returns the editor mode to restore for a LaTeX file.
+ */
+function getRememberedMode(
+  context: vscode.ExtensionContext,
+  uri: vscode.Uri
+): 'source' | 'visual' | undefined {
+  const configuration = vscode.workspace.getConfiguration('latexVisualEditor')
+  if (configuration.get<boolean>('persistToggleAcrossTexFiles', true)) {
+    const currentMode =
+      context.workspaceState.get<'source' | 'visual'>(CURRENT_MODE_KEY)
+    if (currentMode !== undefined) return currentMode
+  }
+  if (configuration.get<boolean>('rememberMode', true)) {
+    return context.workspaceState.get<'source' | 'visual'>(
+      MODE_KEY_PREFIX + uri.toString()
+    )
+  }
+  return undefined
 }
 
 /**

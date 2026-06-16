@@ -1,8 +1,11 @@
 import { EditorView, WidgetType } from '@codemirror/view'
 import { redo, undo } from '@codemirror/commands'
+import { EditorState } from '@codemirror/state'
 import type { SyntaxNode } from '@lezer/common'
 import {
   parseColumnSpecifications,
+  generateTable,
+  validateParsedTable,
   type ParsedTableData,
 } from '../../../components/table-generator/utils'
 import { parser } from '../../../lezer-latex/latex.mjs'
@@ -18,11 +21,55 @@ export function renderTableCellContent(
 ): void {
   element.replaceChildren()
   const tree = parser.parse(source)
+  const state = EditorState.create({ doc: source })
+  let renderedNestedTable = false
+
+  tree.iterate({
+    enter(nodeRef) {
+      if (renderedNestedTable) return false
+      if (nodeRef.type.name !== 'TabularEnvironment') return
+
+      try {
+        const parsed = generateTable(nodeRef.node, state)
+        if (!validateParsedTable(parsed)) return
+
+        renderStaticTable(parsed, element)
+        renderedNestedTable = true
+        return false
+      } catch {
+        return
+      }
+    },
+  })
+
+  if (renderedNestedTable) return
+
   typesetNodeIntoElement(
     tree.topNode,
     element,
     source.substring.bind(source)
   )
+}
+
+function renderStaticTable(
+  parsedTableData: ParsedTableData,
+  element: HTMLElement
+) {
+  const table = document.createElement('table')
+  table.className = 'latex-visual-table latex-visual-nested-table'
+
+  parsedTableData.table.rows.forEach(row => {
+    const tableRow = document.createElement('tr')
+    row.cells.forEach(cell => {
+      const tableCell = document.createElement('td')
+      if (cell.multiColumn) tableCell.colSpan = cell.multiColumn.columnSpan
+      renderTableCellContent(cell.content, tableCell)
+      tableRow.append(tableCell)
+    })
+    table.append(tableRow)
+  })
+
+  element.append(table)
 }
 
 type TableCoordinate = {

@@ -1,4 +1,4 @@
-import { EditorState, Range, StateField } from '@codemirror/state'
+import { EditorState, Range, StateEffect, StateField } from '@codemirror/state'
 import {
   Decoration,
   DecorationSet,
@@ -92,6 +92,8 @@ type Options = {
   previewByPath: (path: string) => PreviewPath | null
 }
 
+export const refreshAtomicDecorations = StateEffect.define<void>()
+
 function shouldDecorate(
   state: EditorState,
   extents: { from: number; to: number }
@@ -148,6 +150,59 @@ function decorateArgumentBraces(
 
 const hasClosingBrace = (node: SyntaxNode) =>
   node.getChild('EnvNameGroup')?.getChild('CloseBrace')
+
+const TABLE_WRAPPER_COMMANDS = new Set([
+  '\\adjustbox',
+  '\\resizebox',
+  '\\scalebox',
+])
+
+const tableFormattingCommandBefore = (
+  state: EditorState,
+  from: number
+): number => {
+  const lookBehindFrom = Math.max(0, from - 500)
+  const prefix = state.sliceDoc(lookBehindFrom, from)
+  const match = prefix.match(
+    /(?:\s|%[^\n\r]*(?:\r?\n)?)*\\renewcommand\s*\{\\arraystretch\}\s*\{[^{}]*\}\s*$/
+  )
+
+  return match ? lookBehindFrom + match.index! : from
+}
+
+const commandName = (node: SyntaxNode, state: EditorState) => {
+  const ctrlSeq = node
+    .getChild('UnknownCommand')
+    ?.getChild('CtrlSeq')
+
+  return ctrlSeq ? state.sliceDoc(ctrlSeq.from, ctrlSeq.to).trim() : undefined
+}
+
+export const tableDecorationRange = (
+  tabularNode: SyntaxNode,
+  state: EditorState,
+  tableNode: SyntaxNode | null
+) => {
+  const range = {
+    from: (tableNode ?? tabularNode).from,
+    to: (tableNode ?? tabularNode).to,
+  }
+
+  let parent = tabularNode.parent
+  while (parent && !parent.type.is('TableEnvironment')) {
+    if (
+      parent.type.is('Command') &&
+      TABLE_WRAPPER_COMMANDS.has(commandName(parent, state) ?? '')
+    ) {
+      range.from = parent.from
+      range.to = parent.to
+    }
+    parent = parent.parent
+  }
+
+  range.from = tableFormattingCommandBefore(state, range.from)
+  return range
+}
 
 /**
  * A state field that decorates ranges of text (including multiple lines) with Widget or Line decorations.
@@ -343,12 +398,17 @@ export const atomicDecorations = (options: Options) => {
               }
             }
           } else if (nodeRef.type.is('TabularEnvironment')) {
-            if (shouldDecorate(state, nodeRef)) {
-              const tabularNode = nodeRef.node
-              const tableNode = ancestorOfNodeWithType(
+            const tabularNode = nodeRef.node
+            const tableNode = ancestorOfNodeWithType(
                 tabularNode,
                 'TableEnvironment'
               )
+            const decorationRange = tableDecorationRange(
+              tabularNode,
+              state,
+              tableNode
+            )
+            if (shouldDecorate(state, decorationRange)) {
               const directChild = isDirectChildOfEnvironment(
                 tabularNode.parent,
                 tableNode
@@ -370,14 +430,14 @@ export const atomicDecorations = (options: Options) => {
                       parsedTableData,
                       tabularNode,
                       state.doc.sliceString(
-                        (tableNode ?? tabularNode).from,
-                        (tableNode ?? tabularNode).to
+                        decorationRange.from,
+                        decorationRange.to
                       ),
                       tableNode,
                       directChild
                     ),
                     block: true,
-                  }).range(nodeRef.from, nodeRef.to)
+                  }).range(decorationRange.from, decorationRange.to)
                 )
                 return false
               } else {
@@ -1349,7 +1409,8 @@ export const atomicDecorations = (options: Options) => {
         } else if (
           // only update the decorations when the mouse is not making a selection
           !value.mousedown &&
-          (tree !== value.previousTree ||
+          (tr.effects.some(effect => effect.is(refreshAtomicDecorations)) ||
+            tree !== value.previousTree ||
             tr.selection ||
             hasMouseDownEffect(tr))
         ) {

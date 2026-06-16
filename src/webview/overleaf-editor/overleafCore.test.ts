@@ -47,5 +47,6 @@ describe('vendored Overleaf core', () => {
 
   it('parses common tabular column specifications', () => {
     expect(parseColumnSpecifications('|l|c|p{2cm}|')).toHaveLength(3)
+    expect(parseColumnSpecifications('@{}XXXXX@{}')).toHaveLength(5)
   })
 })

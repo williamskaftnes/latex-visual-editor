@@ -1,5 +1,5 @@
 import { EditorView } from '@codemirror/view'
-import { GraphicsWidget } from './graphics'
+import { GraphicsWidget, schedulePdfDestroy } from './graphics'
 import { editFigureDataEffect } from '../../figure-modal'
 import { materialIcon } from '../../../../adapters/materialIcon'
 
@@ -19,12 +19,14 @@ export class EditableGraphicsWidget extends GraphicsWidget {
     }
   }
 
-  updateDOM(element: HTMLImageElement, view: EditorView): boolean {
+  updateDOM(element: HTMLElement, view: EditorView): boolean {
     this.destroyed = false
     element.classList.toggle('ol-cm-environment-centered', this.centered)
+    const preview = this.previewByPath(this.filePath)
     if (
       this.filePath === element.dataset.filepath &&
-      element.dataset.width === String(this.figureData?.width?.toString())
+      element.dataset.width === String(this.figureData?.width) &&
+      element.dataset.previewUrl === (preview?.url ?? '')
     ) {
       // Figure remained the same, so just update the event listener on the button
       const button = element.querySelector<HTMLButtonElement>(
@@ -34,6 +36,10 @@ export class EditableGraphicsWidget extends GraphicsWidget {
         this.setEditDispatcher(button, view)
       }
       return true
+    }
+    if (this.pdfInstance) {
+      schedulePdfDestroy(this.pdfInstance)
+      this.pdfInstance = null
     }
     this.renderGraphic(element, view)
     view.requestMeasure()

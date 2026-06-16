@@ -22,6 +22,9 @@
     "Programming Languages"
   ],
   "main": "./dist/extension.js",
+  "activationEvents": [
+    "onUri"
+  ],
   "contributes": {
     "customEditors": [
       {
@@ -57,6 +60,10 @@
       {
         "command": "latexVisualEditor.insertTable",
         "title": "LaTeX: Insert Table"
+      },
+      {
+        "command": "latexVisualEditor.refreshWebviews",
+        "title": "LaTeX: Refresh Visual Editor Webviews"
       }
     ],
     "keybindings": [
@@ -95,6 +102,11 @@
           "default": true,
           "description": "Remember visual mode separately for each LaTeX file in the workspace."
         },
+        "latexVisualEditor.persistToggleAcrossTexFiles": {
+          "type": "boolean",
+          "default": true,
+          "description": "Apply the current source/visual toggle choice when opening other LaTeX files."
+        },
         "latexVisualEditor.maxImagePreviewBytes": {
           "type": "number",
           "default": 20971520,
@@ -114,6 +126,7 @@
     "generate:parser": "node scripts/generate-parser.mjs",
     "build": "npm run generate:parser && node scripts/build.mjs",
     "watch": "npm run generate:parser && node scripts/build.mjs --watch",
+    "refresh:webviews": "npm run build && node scripts/refresh-webviews.mjs",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run generate:parser",
     "test": "vitest run",
@@ -133,7 +146,8 @@
     "@lezer/lr": "^1.4.2",
     "@overleaf/o-error": "^3.4.0",
     "lodash": "^4.17.21",
-    "mathjax": "^4.1.2"
+    "mathjax": "^4.1.2",
+    "pdfjs-dist": "^4.10.38"
   },
   "devDependencies": {
     "@lezer/generator": "^1.7.3",

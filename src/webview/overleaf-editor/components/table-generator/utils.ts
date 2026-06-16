@@ -10,7 +10,7 @@ import {
   WidthSelection,
 } from './toolbar/column-width-modal/column-width'
 
-const COMMIT_CHARACTERS = ['c', 'l', 'r', 'p', 'm', 'b', '>']
+const COMMIT_CHARACTERS = ['c', 'l', 'r', 'p', 'm', 'b', 'X', '>']
 
 export type CellPosition = { from: number; to: number }
 export type RowPosition = {
@@ -153,6 +153,11 @@ export function parseColumnSpecifications(
         i = argumentEnd
         break
       }
+      case 'X':
+        currentIsParagraphColumn = true
+        currentAlignment = 'paragraph'
+        currentContent += 'X'
+        break
       case '@':
       case '!': {
         const argumentEnd = parseArgument(specification, i + 1)
@@ -456,10 +461,14 @@ export function generateTable(
   node: SyntaxNode,
   state: EditorState
 ): ParsedTableData {
-  const specification = node
-    .getChild('BeginEnv')
-    ?.getChild('TextArgument')
-    ?.getChild('LongArg')
+  let specification: SyntaxNode | null = null
+  let child = node.getChild('BeginEnv')?.firstChild ?? null
+  while (child) {
+    if (child.type.is('TextArgument')) {
+      specification = child.getChild('LongArg')
+    }
+    child = child.nextSibling
+  }
 
   if (!specification) {
     throw new Error('Missing column specification')

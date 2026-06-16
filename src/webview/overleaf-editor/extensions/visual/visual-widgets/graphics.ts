@@ -3,6 +3,21 @@ import { placeSelectionInsideBlock } from '../selection'
 import { isEqual } from 'lodash'
 import { FigureData } from '../../figure-modal'
 import type { PreviewPath } from '../../../../adapters/previewPath'
+import type { PDFDocumentProxy } from '../../../../pdf/pdf-js'
+
+const pendingPdfDestroys = new Set<Promise<unknown>>()
+
+export function schedulePdfDestroy(pdf: PDFDocumentProxy): void {
+  const task = pdf.destroy().catch(() => undefined)
+  pendingPdfDestroys.add(task)
+  task.finally(() => pendingPdfDestroys.delete(task))
+}
+
+async function waitForPendingPdfDestroys(): Promise<void> {
+  while (pendingPdfDestroys.size > 0) {
+    await Promise.all(pendingPdfDestroys)
+  }
+}
 
 /**
  * Displays a workspace graphics resource resolved by the VS Code host.
@@ -10,6 +25,8 @@ import type { PreviewPath } from '../../../../adapters/previewPath'
 export class GraphicsWidget extends WidgetType {
   destroyed = false
   height = 300
+  pdfInstance: PDFDocumentProxy | null = null
+  readonly previewKey: string
 
   constructor(
     public filePath: string,
@@ -18,6 +35,8 @@ export class GraphicsWidget extends WidgetType {
     public figureData: FigureData | null
   ) {
     super()
+    const preview = this.previewByPath(this.filePath)
+    this.previewKey = preview ? `${preview.extension}:${preview.url}` : ''
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -37,6 +56,7 @@ export class GraphicsWidget extends WidgetType {
     return (
       widget.filePath === this.filePath &&
       widget.centered === this.centered &&
+      widget.previewKey === this.previewKey &&
       isEqual(this.figureData, widget.figureData)
     )
   }
@@ -44,13 +64,20 @@ export class GraphicsWidget extends WidgetType {
   updateDOM(element: HTMLElement, view: EditorView): boolean {
     this.destroyed = false
     element.classList.toggle('ol-cm-environment-centered', this.centered)
+    const preview = this.previewByPath(this.filePath)
     if (
-      this.filePath !== element.dataset.filepath ||
-      element.dataset.width !== String(this.figureData?.width)
+      this.filePath === element.dataset.filepath &&
+      element.dataset.width === String(this.figureData?.width) &&
+      element.dataset.previewUrl === (preview?.url ?? '')
     ) {
-      this.renderGraphic(element, view)
-      view.requestMeasure()
+      return true
     }
+    if (this.pdfInstance) {
+      schedulePdfDestroy(this.pdfInstance)
+      this.pdfInstance = null
+    }
+    this.renderGraphic(element, view)
+    view.requestMeasure()
     return true
   }
 
@@ -66,6 +93,10 @@ export class GraphicsWidget extends WidgetType {
 
   destroy(): void {
     this.destroyed = true
+    if (this.pdfInstance) {
+      schedulePdfDestroy(this.pdfInstance)
+      this.pdfInstance = null
+    }
   }
 
   coordsAt(element: HTMLElement): DOMRect {
@@ -84,9 +115,23 @@ export class GraphicsWidget extends WidgetType {
     const preview = this.previewByPath(this.filePath)
     element.dataset.filepath = this.filePath
     element.dataset.width = String(this.figureData?.width)
+    element.dataset.previewUrl = preview?.url ?? ''
 
-    if (!preview || preview.extension.toLowerCase() === 'pdf') {
+    if (!preview) {
       element.append(this.createErrorElement(view))
+      return
+    }
+
+    if (preview.extension.toLowerCase() === 'pdf') {
+      const canvas = document.createElement('canvas')
+      canvas.className = 'ol-cm-graphics ol-cm-graphics-loading'
+      this.renderPDF(view, canvas, preview.url).catch(() => {
+        if (!this.destroyed) {
+          element.replaceChildren(this.createErrorElement(view))
+          view.requestMeasure()
+        }
+      })
+      element.append(canvas)
       return
     }
 
@@ -108,6 +153,47 @@ export class GraphicsWidget extends WidgetType {
       view.requestMeasure()
     })
     element.append(image)
+  }
+
+  async renderPDF(
+    view: EditorView,
+    canvas: HTMLCanvasElement,
+    url: string
+  ): Promise<void> {
+    const { loadPdfDocumentFromUrl } = await import('../../../../pdf/pdf-js')
+    if (this.destroyed) return
+
+    await waitForPendingPdfDestroys()
+    if (this.destroyed) return
+
+    const pdf = await loadPdfDocumentFromUrl(url)
+    this.pdfInstance = pdf
+    if (this.destroyed) {
+      schedulePdfDestroy(pdf)
+      this.pdfInstance = null
+      return
+    }
+
+    const page = await pdf.getPage(1)
+    if (this.destroyed) return
+
+    const viewport = page.getViewport({ scale: 1 })
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+    const width = this.figureData?.width
+      ? `min(100%, ${this.figureData.width * 100}%)`
+      : ''
+    canvas.style.width = width
+    canvas.style.maxWidth = width
+
+    await page.render({
+      canvasContext: canvas.getContext('2d')!,
+      viewport,
+    }).promise
+
+    canvas.classList.remove('ol-cm-graphics-loading')
+    this.height = canvas.getBoundingClientRect().height || viewport.height
+    view.requestMeasure()
   }
 
   /**

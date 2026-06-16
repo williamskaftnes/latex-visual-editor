@@ -25,14 +25,17 @@ export const VISUAL_EDITOR_VIEW_TYPE = 'latexVisualEditor.editor'
  */
 export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly metadataIndexes = new Map<string, WorkspaceMetadataIndex>()
+  private readonly panels = new Set<vscode.WebviewPanel>()
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   /**
    * Registers the custom editor provider.
    */
-  static register(context: vscode.ExtensionContext): vscode.Disposable {
-    const provider = new LatexVisualEditorProvider(context)
+  static register(
+    context: vscode.ExtensionContext,
+    provider = new LatexVisualEditorProvider(context)
+  ): vscode.Disposable {
     const registration = vscode.window.registerCustomEditorProvider(
       VISUAL_EDITOR_VIEW_TYPE,
       provider,
@@ -54,16 +57,16 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
     const metadataIndex = this.getMetadataIndex(workspaceFolder)
     const imageFiles = new ImageFileService(document, workspaceFolder)
-    await metadataIndex.refresh()
 
     panel.webview.options = {
       enableScripts: true,
       localResourceRoots: [
         this.context.extensionUri,
-        ...(workspaceFolder ? [workspaceFolder.uri] : []),
+        imageFiles.resourceRoot,
       ],
     }
     panel.webview.html = this.createWebviewHtml(panel.webview)
+    this.panels.add(panel)
 
     const post = (message: HostToWebviewMessage) => panel.webview.postMessage(message)
     let editQueue = Promise.resolve()
@@ -90,6 +93,10 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 
     const metadataListener = metadataIndex.onDidChange(metadata => {
       void post({ type: 'metadataChanged', metadata })
+    })
+
+    void metadataIndex.refresh().catch(error => {
+      console.error('Failed to refresh LaTeX visual editor metadata', error)
     })
 
     const messageListener = panel.webview.onDidReceiveMessage(
@@ -144,12 +151,23 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 
     if (panel.active) setActiveVisualEditor(panel, document)
     panel.onDidDispose(() => {
+      this.panels.delete(panel)
       documentListener.dispose()
       metadataListener.dispose()
       messageListener.dispose()
       visibilityListener.dispose()
       if (getActiveVisualEditor() === panel) setActiveVisualEditor(undefined)
     })
+  }
+
+  /**
+   * Reloads open webviews from the current dist/webview.js and dist/webview.css.
+   */
+  refreshWebviews(): number {
+    for (const panel of this.panels) {
+      panel.webview.html = this.createWebviewHtml(panel.webview)
+    }
+    return this.panels.size
   }
 
   /**
@@ -311,6 +329,9 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
         'tex-svg.js'
       )
     )
+    const pdfWorkerUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'pdf.worker.mjs')
+    )
     const nonce = crypto.randomBytes(16).toString('hex')
 
     return `<!doctype html>
@@ -318,7 +339,7 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data: blob:; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data: blob:; connect-src ${webview.cspSource}; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} blob: 'nonce-${nonce}'; worker-src blob:; child-src blob:;">
   <link rel="stylesheet" href="${styleUri}">
   <title>LaTeX Visual Editor</title>
 </head>
@@ -326,6 +347,7 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
   <div id="toolbar"></div>
   <div id="editor"></div>
   <meta name="latex-visual-editor-mathjax" content="${escapeHtmlAttribute(mathJaxUri.toString())}">
+  <meta name="latex-visual-editor-pdf-worker" content="${escapeHtmlAttribute(pdfWorkerUri.toString())}">
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`

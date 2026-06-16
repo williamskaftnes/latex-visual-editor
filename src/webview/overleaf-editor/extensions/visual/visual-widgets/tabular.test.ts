@@ -9,6 +9,7 @@ import {
   validateParsedTable,
 } from '../../../components/table-generator/utils'
 import { TabularWidget, renderTableCellContent } from './tabular'
+import { tableDecorationRange } from '../atomic-decorations'
 
 describe('renderTableCellContent', () => {
   it('renders rich LaTeX formatting instead of raw commands', () => {
@@ -25,6 +26,21 @@ describe('renderTableCellContent', () => {
     expect(
       element.querySelector('.ol-cm-command-underline')?.textContent
     ).toBe('underline')
+  })
+
+  it('renders nested tabular content as a table', () => {
+    const element = document.createElement('div')
+
+    renderTableCellContent(
+      String.raw`\begin{tabular}{l}Inner A\\Inner B\end{tabular}`,
+      element
+    )
+
+    const table = element.querySelector('table')
+    expect(table).not.toBeNull()
+    expect(table?.querySelectorAll('tr')).toHaveLength(2)
+    expect(element.textContent).toContain('Inner A')
+    expect(element.textContent).toContain('Inner B')
   })
 })
 
@@ -253,5 +269,55 @@ describe('TabularWidget', () => {
     expect(nextParsed.table.rows[1].cells.map(cell => cell.content.trim())).toEqual([
       'Headings',
     ])
+  })
+
+  it('parses tabularx with a width argument and X columns', () => {
+    const source = String.raw`\begin{tabularx}{\linewidth}{@{}XXXXX@{}}
+\toprule
+Dataset & Year & Fault generation & Modalities & Notes\\
+\midrule
+CWRU & 1999 & Artificial bearing faults & Vibration & Widely cited dataset\\
+\bottomrule
+\end{tabularx}`
+    const state = EditorState.create({ doc: source })
+    let tabularNode: SyntaxNode | undefined
+    parser.parse(source).iterate({
+      enter(node) {
+        if (node.type.name === 'TabularEnvironment') {
+          tabularNode = node.node
+        }
+      },
+    })
+
+    const parsed = generateTable(tabularNode!, state)
+
+    expect(validateParsedTable(parsed)).toBe(true)
+    expect(parsed.table.columns).toHaveLength(5)
+    expect(state.sliceDoc(parsed.specification.from, parsed.specification.to)).toBe(
+      '@{}XXXXX@{}'
+    )
+  })
+
+  it('hides table-only wrapper commands with the visual table', () => {
+    const source = String.raw`\renewcommand{\arraystretch}{1.4}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{ll}
+A & B\\
+\end{tabular}
+}`
+    const state = EditorState.create({ doc: source })
+    let tabularNode: SyntaxNode | undefined
+    parser.parse(source).iterate({
+      enter(node) {
+        if (node.type.name === 'TabularEnvironment') {
+          tabularNode = node.node
+        }
+      },
+    })
+
+    expect(tableDecorationRange(tabularNode!, state, null)).toEqual({
+      from: 0,
+      to: source.length,
+    })
   })
 })
