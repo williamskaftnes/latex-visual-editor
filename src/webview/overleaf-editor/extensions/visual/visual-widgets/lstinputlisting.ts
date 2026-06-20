@@ -24,7 +24,7 @@ export class LstInputListingWidget extends WidgetType {
     element.className = 'latex-listing-preview'
     element.dataset.filepath = this.filePath
 
-    element.append(this.createBody(view))
+    element.append(this.createBody())
     this.loadTextFallback(element, view)
     element.addEventListener('mouseup', event => {
       event.preventDefault()
@@ -42,7 +42,7 @@ export class LstInputListingWidget extends WidgetType {
 
   updateDOM(element: HTMLElement, view: EditorView): boolean {
     if (element.dataset.filepath === this.filePath) {
-      element.replaceChild(this.createBody(view), element.lastElementChild!)
+      element.replaceChild(this.createBody(), element.lastElementChild!)
       this.loadTextFallback(element, view)
       return true
     }
@@ -61,7 +61,7 @@ export class LstInputListingWidget extends WidgetType {
     return 220
   }
 
-  private createBody(view: EditorView): HTMLElement {
+  private createBody(): HTMLElement {
     const preview = this.previewByPath(this.filePath)
     if (!preview) {
       return this.createMessage('Loading listing preview...')

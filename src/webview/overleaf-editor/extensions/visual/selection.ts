@@ -85,13 +85,13 @@ export const updateHasMouseDownEffect = updateHasEffect(mouseDownEffect)
  * to record the current mousedown status, which is stored in a state field.
  */
 const mouseDownListener = EditorView.domEventHandlers({
-  mousedown: (event, view) => {
+  mousedown: (_, view) => {
     // not wrapped in a timeout, so update listeners know that the mouse is down before they process the selection
     view.dispatch({
       effects: mouseDownEffect.of(true),
     })
   },
-  mouseup: (event, view) => {
+  mouseup: (_, view) => {
     // wrap in a timeout, so update listeners receive this effect after the new selection has finished being handled
     window.setTimeout(() => {
       view.dispatch({
@@ -99,7 +99,7 @@ const mouseDownListener = EditorView.domEventHandlers({
       })
     })
   },
-  contextmenu: (event: MouseEvent, view) => {
+  contextmenu: (_, view) => {
     // treat a `contextmenu` event as a `mouseup` event, which isn't fired
     window.setTimeout(() => {
       view.dispatch({
@@ -107,7 +107,7 @@ const mouseDownListener = EditorView.domEventHandlers({
       })
     })
   },
-  drop: (event: MouseEvent, view) => {
+  drop: (_, view) => {
     // treat a `drop` event as a `mouseup` event, which isn't fired
     window.setTimeout(() => {
       view.dispatch({

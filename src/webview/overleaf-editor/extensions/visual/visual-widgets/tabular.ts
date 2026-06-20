@@ -573,7 +573,7 @@ export class TabularWidget extends WidgetType {
     )
   }
 
-  ignoreEvent(event: Event): boolean {
+  ignoreEvent(): boolean {
     return true
   }
 

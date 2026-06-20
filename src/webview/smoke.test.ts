@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { EditorSelection, EditorState } from '@codemirror/state'
+import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
