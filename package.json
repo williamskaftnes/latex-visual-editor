@@ -71,13 +71,13 @@
         "command": "latexVisualEditor.selectAll",
         "key": "ctrl+a",
         "mac": "cmd+a",
-        "when": "latexVisualEditor.active"
+        "when": "latexVisualEditor.focused"
       },
       {
         "command": "latexVisualEditor.copy",
         "key": "ctrl+c",
         "mac": "cmd+c",
-        "when": "latexVisualEditor.active"
+        "when": "latexVisualEditor.focused"
       }
     ],
     "menus": {

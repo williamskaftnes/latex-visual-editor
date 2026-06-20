@@ -6,7 +6,11 @@ import type {
   HostToWebviewMessage,
   WebviewToHostMessage,
 } from '../shared/messages'
-import { getActiveVisualEditor, setActiveVisualEditor } from './activeVisualEditor'
+import {
+  getActiveVisualEditor,
+  setActiveVisualEditor,
+  setVisualEditorFocus,
+} from './activeVisualEditor'
 import { ImageFileService } from './imageFiles'
 import {
   getStoredEditorSelection,
@@ -106,6 +110,9 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
           case 'ready':
             await initialize()
             break
+          case 'focusChanged':
+            setVisualEditorFocus(panel, message.focused)
+            break
           case 'edit':
             editQueue = editQueue.then(() =>
               this.applyWebviewEdit(document, message, initialize)
@@ -157,6 +164,7 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
       metadataListener.dispose()
       messageListener.dispose()
       visibilityListener.dispose()
+      setVisualEditorFocus(panel, false)
       if (getActiveVisualEditor() === panel) setActiveVisualEditor(undefined)
     })
   }

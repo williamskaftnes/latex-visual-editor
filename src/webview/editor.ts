@@ -81,6 +81,14 @@ let metadata: WorkspaceMetadata = {
   environments: [],
 }
 
+window.addEventListener('focus', () => {
+  vscode.postMessage({ type: 'focusChanged', focused: true })
+})
+window.addEventListener('blur', () => {
+  vscode.postMessage({ type: 'focusChanged', focused: false })
+})
+vscode.postMessage({ type: 'focusChanged', focused: document.hasFocus() })
+
 window.addEventListener('message', event => {
   const message = event.data as HostToWebviewMessage
   switch (message.type) {
@@ -136,10 +144,8 @@ window.addEventListener('message', event => {
       else if (view) {
         view.dispatch({
           selection: EditorSelection.single(0, view.state.doc.length),
-          scrollIntoView: true,
           userEvent: 'select',
         })
-        view.focus()
       }
       break
   }
