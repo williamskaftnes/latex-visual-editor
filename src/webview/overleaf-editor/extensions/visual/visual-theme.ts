@@ -318,6 +318,53 @@ const mainVisualTheme = EditorView.theme({
   },
   '.ol-cm-environment-lstlisting': {
     fontFamily: 'var(--source-font-family)',
+    fontSize: 'var(--font-size)',
+    lineHeight: 1.45,
+  },
+  '.ol-cm-environment-lstlisting.ol-cm-environment-line': {
+    boxSizing: 'border-box',
+    color: 'var(--vscode-editor-foreground)',
+    backgroundColor: 'var(--vscode-textCodeBlock-background)',
+    borderLeft: '1px solid var(--vscode-panel-border)',
+    borderRight: '1px solid var(--vscode-panel-border)',
+    paddingLeft: '14px',
+    paddingRight: '14px',
+  },
+  '.ol-cm-environment-lstlisting.ol-cm-environment-first-line': {
+    paddingTop: '0 !important',
+  },
+  '.ol-cm-environment-lstlisting.ol-cm-environment-last-line': {
+    paddingBottom: '0 !important',
+  },
+  '.ol-cm-environment-lstlisting.ol-cm-environment-top + .ol-cm-environment-lstlisting.ol-cm-environment-line':
+    {
+      borderTop: '1px solid var(--vscode-panel-border)',
+      borderTopLeftRadius: '6px',
+      borderTopRightRadius: '6px',
+    },
+  '.ol-cm-environment-lstlisting.ol-cm-environment-line:has(+ .ol-cm-environment-lstlisting.ol-cm-environment-bottom)':
+    {
+      borderBottom: '1px solid var(--vscode-panel-border)',
+      borderBottomLeftRadius: '6px',
+      borderBottomRightRadius: '6px',
+    },
+  '.ol-cm-lstinputlisting-line': {
+    boxSizing: 'border-box',
+    color: 'var(--vscode-editor-foreground)',
+    backgroundColor: 'var(--vscode-textCodeBlock-background)',
+    borderLeft: '1px solid var(--vscode-panel-border)',
+    borderRight: '1px solid var(--vscode-panel-border)',
+    borderRadius: '0',
+    padding: '0 14px',
+    fontFamily: 'var(--source-font-family)',
+    fontSize: 'var(--font-size)',
+    lineHeight: 1.45,
+  },
+  '.ol-cm-lstinputlisting-first-line': {
+    borderTop: '1px solid var(--vscode-panel-border)',
+  },
+  '.ol-cm-lstinputlisting-last-line': {
+    borderBottom: '1px solid var(--vscode-panel-border)',
   },
   '.ol-cm-tex': {
     textTransform: 'uppercase',

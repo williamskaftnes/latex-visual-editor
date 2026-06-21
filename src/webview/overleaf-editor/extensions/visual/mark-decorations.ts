@@ -11,6 +11,7 @@ import { centeringNodeForEnvironment } from '../../utils/tree-operations/figure'
 import { parseTheoremStyles } from '../../utils/tree-operations/theorems'
 import { Tree } from '@lezer/common'
 import { parseColorArguments } from '../../utils/tree-operations/colors'
+import { lstInputListingArgument } from './utils/lstinputlisting'
 
 /**
  * A view plugin that decorates ranges of text with Mark decorations.
@@ -42,6 +43,31 @@ export const markDecorations = ViewPlugin.define(
 
               if (ctrlSeq) {
                 const text = state.doc.sliceString(ctrlSeq.from + 1, ctrlSeq.to)
+                if (text === 'lstinputlisting') {
+                  const argument = lstInputListingArgument(nodeRef.node, state)
+                  const startLine = state.doc.lineAt(nodeRef.from).number
+                  const endLine = state.doc.lineAt(
+                    argument?.to ?? nodeRef.to
+                  ).number
+                  for (
+                    let lineNumber = startLine;
+                    lineNumber <= endLine;
+                    lineNumber++
+                  ) {
+                    const classes = ['ol-cm-lstinputlisting-line']
+                    if (lineNumber === startLine) {
+                      classes.push('ol-cm-lstinputlisting-first-line')
+                    }
+                    if (lineNumber === endLine) {
+                      classes.push('ol-cm-lstinputlisting-last-line')
+                    }
+                    decorations.push(
+                      Decoration.line({
+                        class: classes.join(' '),
+                      }).range(state.doc.line(lineNumber).from)
+                    )
+                  }
+                }
                 const commandNode = nodeRef.node.firstChild
                 const isGlossaryCommand =
                   commandNode?.type.is('GlossaryReference') ||

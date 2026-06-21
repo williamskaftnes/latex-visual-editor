@@ -88,6 +88,7 @@ import {
   parseMathContainer,
 } from '../../utils/tree-operations/math'
 import { lineContainsOnlyNode } from './utils/line'
+import { lstInputListingArgument } from './utils/lstinputlisting'
 
 type Options = {
   previewByPath: (path: string) => PreviewPath | null
@@ -1255,14 +1256,17 @@ export const atomicDecorations = (options: Options) => {
                   return false
                 }
               } else if (commandName === '\\lstinputlisting') {
-                const filePathNode = textArgumentNode?.getChild('LongArg')
-                const filePath = filePathNode
-                  ? state.doc
-                      .sliceString(filePathNode.from, filePathNode.to)
-                      .trim()
-                  : ''
+                const argument = lstInputListingArgument(commandNode, state)
+                const filePath = argument?.filePath ?? ''
 
-                if (filePath && shouldDecorateFromLineEdges(state, nodeRef)) {
+                if (
+                  filePath &&
+                  argument &&
+                  shouldDecorateFromLineEdges(state, {
+                    from: nodeRef.from,
+                    to: argument.to,
+                  })
+                ) {
                   const line = state.doc.lineAt(nodeRef.from)
                   const onlySpaceBeforeNode = /^\s*$/.test(
                     state.sliceDoc(line.from, nodeRef.from)
@@ -1276,7 +1280,7 @@ export const atomicDecorations = (options: Options) => {
                         previewByPath
                       ),
                       block: true,
-                    }).range(from, nodeRef.to)
+                    }).range(from, argument.to)
                   )
                   return false
                 }
