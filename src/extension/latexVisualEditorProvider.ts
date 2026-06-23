@@ -8,6 +8,7 @@ import type {
 } from '../shared/messages'
 import {
   getActiveVisualEditor,
+  getActiveVisualEditorDocument,
   setActiveVisualEditor,
   setVisualEditorFocus,
 } from './activeVisualEditor'
@@ -31,6 +32,7 @@ const MAX_LISTING_PREVIEW_BYTES = 256 * 1024
 export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvider {
   private readonly metadataIndexes = new Map<string, WorkspaceMetadataIndex>()
   private readonly panels = new Set<vscode.WebviewPanel>()
+  private readonly pendingStateSnapshots = new Map<string, () => void>()
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -78,20 +80,26 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
     const initialize = () =>
       post({
         type: 'initialize',
-        text: document.getText(),
+        text: normalizeForWebview(document.getText()),
         version: document.version,
         documentUri: document.uri.toString(),
         metadata: metadataIndex.current,
         configuration: this.configuration,
-        selection: getStoredEditorSelection(document.uri),
-        viewState: getStoredViewState(this.context, document.uri),
+        selection: mapSelectionToWebview(
+          document.getText(),
+          getStoredEditorSelection(document.uri)
+        ),
+        viewState: mapViewStateToWebview(
+          document.getText(),
+          getStoredViewState(this.context, document.uri)
+        ),
       })
 
     const documentListener = vscode.workspace.onDidChangeTextDocument(event => {
       if (event.document.uri.toString() !== document.uri.toString()) return
       void post({
         type: 'documentChanged',
-        text: document.getText(),
+        text: normalizeForWebview(document.getText()),
         version: document.version,
       })
     })
@@ -121,8 +129,8 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
             break
           case 'selectionChanged':
             storeEditorSelection(document.uri, {
-              anchor: message.anchor,
-              head: message.head,
+              anchor: webviewOffsetToHost(document.getText(), message.anchor),
+              head: webviewOffsetToHost(document.getText(), message.head),
             })
             break
           case 'viewStateChanged':
@@ -130,11 +138,32 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
               this.context,
               document.uri,
               {
-                anchor: message.anchor,
+                anchor: webviewOffsetToHost(document.getText(), message.anchor),
                 visualScrollTop: message.visualScrollTop,
                 source: message.source,
               }
             )
+            break
+          case 'stateSnapshot':
+            storeEditorSelection(document.uri, {
+              anchor: webviewOffsetToHost(
+                document.getText(),
+                message.selection.anchor
+              ),
+              head: webviewOffsetToHost(
+                document.getText(),
+                message.selection.head
+              ),
+            })
+            await storeViewState(this.context, document.uri, {
+              ...message.viewState,
+              anchor: webviewOffsetToHost(
+                document.getText(),
+                message.viewState.anchor
+              ),
+            })
+            this.pendingStateSnapshots.get(message.requestId)?.()
+            this.pendingStateSnapshots.delete(message.requestId)
             break
           case 'resolveResource':
             await this.resolveResource(panel.webview, imageFiles, message)
@@ -166,6 +195,30 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
       visibilityListener.dispose()
       setVisualEditorFocus(panel, false)
       if (getActiveVisualEditor() === panel) setActiveVisualEditor(undefined)
+    })
+  }
+
+  /** Flushes selection and viewport state from the active webview. */
+  async syncActiveEditorState(uri: vscode.Uri): Promise<void> {
+    const panel = getActiveVisualEditor()
+    const document = getActiveVisualEditorDocument()
+    if (!panel || document?.uri.toString() !== uri.toString()) return
+
+    const requestId = crypto.randomUUID()
+    await new Promise<void>(resolve => {
+      const timeout = setTimeout(() => {
+        this.pendingStateSnapshots.delete(requestId)
+        resolve()
+      }, 1000)
+      this.pendingStateSnapshots.set(requestId, () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+      void panel.webview.postMessage({
+        type: 'command',
+        command: 'syncState',
+        requestId,
+      } satisfies HostToWebviewMessage)
     })
   }
 
@@ -229,10 +282,12 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
     edit.replace(
       document.uri,
       new vscode.Range(
-        document.positionAt(message.from),
-        document.positionAt(message.to)
+        document.positionAt(webviewOffsetToHost(document.getText(), message.from)),
+        document.positionAt(webviewOffsetToHost(document.getText(), message.to))
       ),
-      message.insert
+      document.eol === vscode.EndOfLine.CRLF
+        ? message.insert.replaceAll('\n', '\r\n')
+        : message.insert
     )
     if (!(await vscode.workspace.applyEdit(edit))) {
       await resynchronize()
@@ -371,6 +426,45 @@ export class LatexVisualEditorProvider implements vscode.CustomTextEditorProvide
   <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`
+  }
+}
+
+function normalizeForWebview(text: string): string {
+  return text.replace(/\r\n?/g, '\n')
+}
+
+function hostOffsetToWebview(text: string, offset: number): number {
+  return offset - (text.slice(0, offset).match(/\r(?=\n)/g)?.length ?? 0)
+}
+
+function webviewOffsetToHost(text: string, offset: number): number {
+  let host = 0
+  let webview = 0
+  while (host < text.length && webview < offset) {
+    if (text[host] === '\r' && text[host + 1] === '\n') host += 1
+    host += 1
+    webview += 1
+  }
+  return host
+}
+
+function mapSelectionToWebview(
+  text: string,
+  selection: { anchor: number; head: number } | undefined
+): { anchor: number; head: number } | undefined {
+  return selection && {
+    anchor: hostOffsetToWebview(text, selection.anchor),
+    head: hostOffsetToWebview(text, selection.head),
+  }
+}
+
+function mapViewStateToWebview(
+  text: string,
+  state: ReturnType<typeof getStoredViewState>
+): ReturnType<typeof getStoredViewState> {
+  return state && {
+    ...state,
+    anchor: hostOffsetToWebview(text, state.anchor),
   }
 }
 

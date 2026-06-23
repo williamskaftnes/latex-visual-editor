@@ -141,6 +141,17 @@ window.addEventListener('message', event => {
     case 'command':
       if (message.command === 'insertFigure') openImagePicker()
       else if (message.command === 'insertTable') insertTable(3, 3)
+      else if (message.command === 'syncState' && view && message.requestId) {
+        vscode.postMessage({
+          type: 'stateSnapshot',
+          requestId: message.requestId,
+          selection: {
+            anchor: view.state.selection.main.anchor,
+            head: view.state.selection.main.head,
+          },
+          viewState: measureViewState(view),
+        })
+      }
       else if (view) {
         view.dispatch({
           selection: EditorSelection.single(0, view.state.doc.length),
@@ -233,7 +244,7 @@ function createEditor(
     requestAnimationFrame(() => {
       if (viewState.source === 'visual') {
         document.querySelector('#editor')?.classList.add('restoring-view')
-        restoreVisualReopen(viewState.visualScrollTop)
+        restoreVisualReopen(viewState.anchor, viewState.visualScrollTop)
       } else {
         centerVisualAnchor(viewState.anchor, () => {
           restoringViewState = false
@@ -245,7 +256,7 @@ function createEditor(
   view.focus()
 }
 
-function restoreVisualReopen(scrollTop?: number): void {
+function restoreVisualReopen(anchor: number, scrollTop?: number): void {
   waitForStableLayout(() => {
     if (view && scrollTop !== undefined) {
       view.scrollDOM.scrollTop = Math.min(
@@ -253,11 +264,11 @@ function restoreVisualReopen(scrollTop?: number): void {
         maximumScrollTop(view)
       )
     }
-    requestAnimationFrame(() => {
+    centerVisualAnchor(anchor, () => requestAnimationFrame(() => {
       restoringViewState = false
       document.querySelector('#editor')?.classList.remove('restoring-view')
       sendViewState()
-    })
+    }))
   })
 }
 
@@ -275,7 +286,13 @@ function waitForStableLayout(done: () => void): void {
     previousHeight = height
     frames += 1
     const parsed = syntaxTree(view.state).length >= view.state.doc.length
-    if ((parsed && stableFrames >= 3) || frames >= 120) {
+    const imagesLoaded = [...view.dom.querySelectorAll('img')].every(
+      image => image.complete
+    )
+    if (
+      (parsed && pendingResources.size === 0 && imagesLoaded && stableFrames >= 6) ||
+      frames >= 300
+    ) {
       done()
     } else {
       requestAnimationFrame(check)
@@ -297,19 +314,26 @@ function sendViewState(): void {
   if (viewStateFrame !== undefined) cancelAnimationFrame(viewStateFrame)
   viewStateFrame = undefined
   if (!view || restoringViewState) return
-  const bounds = view.scrollDOM.getBoundingClientRect()
-  const anchor =
-    view.posAtCoords({
-      x: bounds.left + Math.min(bounds.width / 2, 40),
-      y: bounds.top + bounds.height / 2,
-    }) ?? view.viewport.from
-  lastMeasuredViewState = {
-    type: 'viewStateChanged',
-    anchor,
-    visualScrollTop: view.scrollDOM.scrollTop,
+  lastMeasuredViewState = { type: 'viewStateChanged', ...measureViewState(view) }
+  vscode.postMessage(lastMeasuredViewState)
+}
+
+function measureViewState(editor: EditorView): {
+  anchor: number
+  visualScrollTop: number
+  source: 'visual'
+} {
+  const bounds = editor.scrollDOM.getBoundingClientRect()
+  const contentBounds = editor.contentDOM.getBoundingClientRect()
+  return {
+    anchor:
+      editor.posAtCoords({
+        x: Math.min(contentBounds.left + 4, bounds.right - 1),
+        y: bounds.top + bounds.height / 2,
+      }) ?? editor.viewport.from,
+    visualScrollTop: editor.scrollDOM.scrollTop,
     source: 'visual',
   }
-  vscode.postMessage(lastMeasuredViewState)
 }
 
 function centerVisualAnchor(anchor: number, done?: () => void): void {

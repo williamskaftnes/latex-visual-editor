@@ -33,7 +33,8 @@ export type HostToWebviewMessage =
   | { type: 'metadataChanged'; metadata: WorkspaceMetadata }
   | {
       type: 'command'
-      command: 'insertFigure' | 'insertTable' | 'selectAll'
+      command: 'insertFigure' | 'insertTable' | 'selectAll' | 'syncState'
+      requestId?: string
     }
   | {
       type: 'resourceResolved'
@@ -60,6 +61,16 @@ export type WebviewToHostMessage =
       anchor: number
       visualScrollTop: number
       source: 'visual'
+    }
+  | {
+      type: 'stateSnapshot'
+      requestId: string
+      selection: { anchor: number; head: number }
+      viewState: {
+        anchor: number
+        visualScrollTop: number
+        source: 'visual'
+      }
     }
   | {
       type: 'edit'

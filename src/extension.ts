@@ -59,6 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const openSource = async (uri?: vscode.Uri) => {
     const target = uri ?? vscode.window.activeTextEditor?.document.uri
     if (!target) return
+    await visualEditorProvider.syncActiveEditorState(target)
     const selection = getStoredEditorSelection(target)
     const viewState = getStoredViewState(context, target)
     await rememberMode(context, target, 'source')

@@ -38,11 +38,15 @@ export function captureTextEditorViewState(
   editor: vscode.TextEditor
 ): EditorViewState {
   const visible = editor.visibleRanges[0]
-  const line = visible
-    ? Math.round((visible.start.line + visible.end.line) / 2)
-    : editor.selection.active.line
+  const anchor = visible
+    ? Math.round(
+        (editor.document.offsetAt(visible.start) +
+          editor.document.offsetAt(visible.end)) /
+          2
+      )
+    : editor.document.offsetAt(editor.selection.active)
   return {
-    anchor: editor.document.offsetAt(new vscode.Position(line, 0)),
+    anchor,
     source: 'source',
   }
 }
