@@ -17,6 +17,7 @@ export const visualHighlightStyle = syntaxHighlighting(
     { tag: tags.punctuation, class: 'ol-cm-punctuation' },
     { tag: tags.literal, class: 'ol-cm-monospace' },
     { tag: tags.strong, class: 'ol-cm-strong' },
+    { tag: tags.comment, color: '#6a9955' },
     {
       tag: tags.monospace,
       fontFamily: 'var(--source-font-family)',
