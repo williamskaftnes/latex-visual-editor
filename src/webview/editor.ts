@@ -1,6 +1,6 @@
 import './editor.css'
 
-import { autocompletion, closeBrackets } from '@codemirror/autocomplete'
+import { autocompletion } from '@codemirror/autocomplete'
 import {
   defaultKeymap,
   history,
@@ -9,8 +9,8 @@ import {
 } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { Compartment, EditorSelection, EditorState } from '@codemirror/state'
-import { EditorView, keymap, lineNumbers } from '@codemirror/view'
-import { syntaxTree } from '@codemirror/language'
+import { EditorView, keymap } from '@codemirror/view'
+import { foldGutter, foldKeymap, syntaxTree } from '@codemirror/language'
 import type {
   HostToWebviewMessage,
   WebviewToHostMessage,
@@ -35,6 +35,7 @@ import {
 import { highlightCurrentLineNumber } from './overleaf-editor/extensions/visual/current-line-number'
 import { listItemMarker } from './overleaf-editor/extensions/visual/list-item-marker'
 import { markDecorations } from './overleaf-editor/extensions/visual/mark-decorations'
+import { visualLineNumbers } from './overleaf-editor/extensions/visual/line-numbers'
 import { pasteHtml } from './overleaf-editor/extensions/visual/paste-html'
 import { mousedown } from './overleaf-editor/extensions/visual/selection'
 import { tableGeneratorTheme } from './overleaf-editor/extensions/visual/table-generator'
@@ -48,6 +49,9 @@ import { latexAutocomplete } from './latexAutocomplete'
 import { findCurrentSectionHeadingLevel } from './overleaf-editor/extensions/toolbar/sections'
 import { ancestorListType } from './overleaf-editor/extensions/toolbar/lists'
 import { withinFormattingCommand } from './overleaf-editor/utils/tree-operations/formatting'
+import { bracketMatching } from './overleaf-editor/extensions/bracket-matching'
+import { mathPreview } from './overleaf-editor/extensions/math-preview'
+import { autoPair } from './overleaf-editor/extensions/auto-pair'
 
 type VsCodeApi = {
   postMessage: (message: WebviewToHostMessage) => void
@@ -185,7 +189,8 @@ function createEditor(
       EditorState.phrases.of(phrases),
       history({ newGroupDelay: 250 }),
       EditorView.lineWrapping,
-      lineNumbers(),
+      visualLineNumbers,
+      foldGutter({ openText: '▾', closedText: '▸' }),
       highlightCurrentLineNumber,
       colorTheme.of(EditorView.darkTheme.of(isDarkTheme())),
       EditorView.contentAttributes.of({ 'aria-label': 'Visual Editor editing' }),
@@ -193,6 +198,7 @@ function createEditor(
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
+        ...foldKeymap,
         indentWithTab,
       ]),
       search(),
@@ -202,7 +208,9 @@ function createEditor(
           `latex-completion-${completion.type ?? 'text'}`,
       }),
       latexAutocomplete(() => metadata),
-      closeBrackets(),
+      autoPair,
+      bracketMatching(),
+      mathPreview,
       visualHighlightStyle,
       visualTheme,
       tableGeneratorTheme,

@@ -83,6 +83,7 @@ Text with \textbf{bold} and \(x^2\).
     expect(document.querySelector('.cm-editor.ol-cm-parsed')).not.toBeNull()
     expect(document.querySelector('.cm-content')?.textContent).toContain('Hello')
     expect(document.querySelector('.ol-cm-heading')).not.toBeNull()
+    expect(document.querySelector('.cm-foldGutter')).not.toBeNull()
     expect(document.querySelector('#toolbar')?.textContent).toContain('Image')
 
     const editor = EditorView.findFromDOM(
